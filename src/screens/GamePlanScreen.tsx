@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
-import { Flame, Wallet, ShoppingCart, CreditCard, Target, TrendingUp, Rocket, Home, Trophy, Calendar, Check, Heart } from 'lucide-react-native';
+import { Wallet, ShoppingCart, CreditCard, Target, TrendingUp, Rocket, Home, Trophy, Calendar, Check, Heart } from 'lucide-react-native';
 import { useAppStore } from '../store/store';
 import { colors } from '../theme/colors';
 import { Pill } from '../components';
 
 const fm = (n: number) => Math.round(n).toLocaleString();
 const fK = (n: number) => n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `$${Math.round(n / 1e3)}k` : `$${fm(n)}`;
-const ICS: Record<string, any> = { wallet: Wallet, cart: ShoppingCart, cc: CreditCard, fire: Flame, tgt: Target, up: TrendingUp, rkt: Rocket, home: Home, trophy: Trophy, heart: Heart, cal: Calendar };
+const ICS: Record<string, any> = { wallet: Wallet, cart: ShoppingCart, cc: CreditCard, tgt: Target, up: TrendingUp, rkt: Rocket, home: Home, trophy: Trophy, heart: Heart, cal: Calendar };
 
 export default function GamePlanScreen() {
   const store = useAppStore();
@@ -30,7 +30,7 @@ export default function GamePlanScreen() {
     if (tD > store.take * 0.15 && store.take > 0) {
       const excess = tD - store.take * 0.1;
       const months = saveable > 0 ? Math.ceil(tD * 6 / saveable) : 0; // rough payoff estimate
-      s.push({ id: 's3', p: 2, t: 'your debt is holding you back', d: `$${fm(tD)}/mo in debt is ${Math.round(tD / store.take * 100)}% of your income. lenders see red above 15%.`, ic: 'fire', cl: colors.red, bg: colors.redBg, sh: colors.redDark, im: `cut $${fm(excess)}/mo`, timeline: months > 0 ? `~${months} months if you grind` : undefined, tp: 'goal' });
+      s.push({ id: 's3', p: 2, t: 'your debt is holding you back', d: `$${fm(tD)}/mo in debt is ${Math.round(tD / store.take * 100)}% of your income. lenders see red above 15%.`, ic: 'cc', cl: colors.red, bg: colors.redBg, sh: colors.redDark, im: `cut $${fm(excess)}/mo`, timeline: months > 0 ? `~${months} months if you grind` : undefined, tp: 'goal' });
     } else if (tD > 0 && store.take > 0) {
       s.push({ id: 's4', p: 3, t: 'finish off the last bit of debt', d: `$${fm(tD)}/mo isn't killing you, but $0 is better for your mortgage rate.`, ic: 'cc', cl: colors.orange, bg: colors.orangeBg, sh: colors.orangeDark, im: `$${fm(tD)}/mo freed when done`, tp: 'goal' });
     }
@@ -70,12 +70,7 @@ export default function GamePlanScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ paddingBottom: 100 }}>
-      <View style={{ alignItems: 'center', paddingTop: 10 }}>
-        <View style={{ backgroundColor: colors.orangeBg, borderWidth: 2, borderColor: colors.orange, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Flame size={16} color={colors.orange} /><Text style={{ fontSize: 13, fontWeight: '900', color: colors.orangeDark }}>{store.streak} day streak</Text>
-        </View>
-      </View>
-      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+      <View style={{ alignItems: 'center', paddingVertical: 12 }}>
         <Text style={{ fontSize: 20, fontWeight: '900', color: colors.text }}>{steps.length} steps to go</Text>
         {steps.length > 1 && <View style={{ flexDirection: 'row', gap: 3, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
           {steps.map(s => <View key={s.id} style={{ width: Math.min(32, 260 / steps.length), height: 7, borderRadius: 4, backgroundColor: store.done[s.id] ? colors.green : colors.border }} />)}
