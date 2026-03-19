@@ -3,28 +3,35 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-
 import TabNavigator from './src/navigation/TabNavigator';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import { useAppStore } from './src/store/store';
 
 export default function App() {
+  const hasOnboarded = useAppStore(s => s.hasOnboarded);
+  const completeOnboarding = useAppStore(s => s.completeOnboarding);
+
+  if (!hasOnboarded) {
+    return (
+      <SafeAreaProvider>
+        <OnboardingScreen onDone={completeOnboarding} />
+        <StatusBar style="dark" />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
         <NavigationContainer>
-          <BottomSheetModalProvider>
-            <TabNavigator />
-          </BottomSheetModalProvider>
+          <TabNavigator />
         </NavigationContainer>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
 });
