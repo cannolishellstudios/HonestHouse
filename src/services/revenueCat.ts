@@ -13,7 +13,7 @@ export const PRODUCT_IDS: Record<PlanId, string> = {
 
 // Paste your actual API keys from the RevenueCat Dashboard here
 export const RC_API_KEY_IOS     = 'appl_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
-export const RC_API_KEY_ANDROID = 'goog_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+export const RC_API_KEY_ANDROID = 'goog_HiFntBbShVfzlVpRQEQsmDlsXZd';
 
 export interface PurchaseResult {
   success: boolean;

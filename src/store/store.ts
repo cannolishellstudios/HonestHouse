@@ -83,10 +83,11 @@ export const useAppStore = create<S>()(
         set(s => ({ done: { ...s.done, [id]: !s.done[id] } }));
         if (!wasDone) {
           const st = get();
-          const hasIncome   = st.take > 0;
-          const hasExpenses = st.totalExpenses() > 0;
-          const { rd }      = st.getCalcs();
-          maybeRequestReview({ hasIncome, hasExpenses, readinessScore: rd });
+          maybeRequestReview({ 
+            hasIncome: st.take > 0, 
+            hasExpenses: st.totalExpenses() > 0, 
+            readinessScore: st.getCalcs().rd 
+          });
         }
       },
       completeOnboarding: () => set({ hasOnboarded: true }),
@@ -119,8 +120,12 @@ export const useAppStore = create<S>()(
       },
 
       syncProStatus: async () => {
-        const active = await checkProStatus();
-        set({ isPro: active });
+        try {
+          const active = await checkProStatus();
+          set({ isPro: active });
+        } catch (err) {
+          if (__DEV__) console.warn('[Store] syncProStatus failed:', err);
+        }
       },
 
       totalExpenses: () => get().expenses.reduce((s, e) => s + e.val, 0),
@@ -143,9 +148,6 @@ export const useAppStore = create<S>()(
           loan = pi * ((Math.pow(1 + mr, np) - 1) / (mr * Math.pow(1 + mr, np)));
 
         const price = loan + dp;
-        const grossApprox = take * 1.3;
-        const dti = grossApprox > 0 ? ((tD + pi) / grossApprox) * 100 : 0;
-
         const yd: Calcs['yd'] = [];
         let bal = loan, cumInt = 0, cumPrinc = 0;
         for (let y = 0; y <= term; y++) {
@@ -162,7 +164,6 @@ export const useAppStore = create<S>()(
           cumInt  += yInt;
           cumPrinc += yPrinc;
         }
-        const tInt = Math.max(0, cumInt);
 
         const gPrice = goal || price;
         const gLoan  = Math.max(0, gPrice - dp);
@@ -170,37 +171,24 @@ export const useAppStore = create<S>()(
           ? gLoan * (mr * Math.pow(1 + mr, np)) / (Math.pow(1 + mr, np) - 1) +
             gPrice * (ptax / 100) / 12 + monthlyIns + hoa
           : 0;
-        const gGap = Math.max(0, gPay - available);
 
-        const rd = Math.min(100,
-          (take  > 0               ? 20 : 0) +
-          (tD   === 0              ? 20 : tD < take * 0.1 ? 12 : 4) +
-          (dp   >= price * 0.2     ? 20 : dp > 0 ? 8 : 0) +
-          (tE   > 0                ? 20 : 0) +
-          (available > take * 0.15 ? 20 : available > 0 ? 10 : 0)
-        );
-
-        const taxes = price > 0 ? price * (ptax / 100) / 12 : available * 0.1;
-        return { mx: available, loan, price, dti, pi, taxes, ins: monthlyIns, maint: estMaint, rd, tInt, gPay, gGap, gPrice, yd };
+        return { 
+          mx: available, loan, price, dti: (take * 1.3) > 0 ? ((tD + pi) / (take * 1.3)) * 100 : 0, 
+          pi, taxes: price > 0 ? price * (ptax / 100) / 12 : available * 0.1, 
+          ins: monthlyIns, maint: estMaint, 
+          rd: Math.min(100, (take > 0 ? 20 : 0) + (tD === 0 ? 20 : tD < take * 0.1 ? 12 : 4) + (dp >= price * 0.2 ? 20 : dp > 0 ? 8 : 0) + (tE > 0 ? 20 : 0) + (available > take * 0.15 ? 20 : available > 0 ? 10 : 0)),
+          tInt: Math.max(0, cumInt), gPay, gGap: Math.max(0, gPay - available), gPrice, yd 
+        };
       },
     }),
     {
       name: 'honesthouse-store',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
-        take:       s.take,
-        dp:         s.dp,
-        rate:       s.rate,
-        term:       s.term,
-        ptax:       s.ptax,
-        monthlyIns: s.monthlyIns,
-        hoa:        s.hoa,
-        goal:       s.goal,
-        expenses:   s.expenses,
-        debts:      s.debts,
-        done:       s.done,
-        hasOnboarded: s.hasOnboarded,
-        isPro:      s.isPro,
+        take: s.take, dp: s.dp, rate: s.rate, term: s.term, ptax: s.ptax,
+        monthlyIns: s.monthlyIns, hoa: s.hoa, goal: s.goal,
+        expenses: s.expenses, debts: s.debts, done: s.done,
+        hasOnboarded: s.hasOnboarded, isPro: s.isPro,
       }),
     }
   )
