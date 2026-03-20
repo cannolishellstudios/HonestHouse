@@ -1,41 +1,8 @@
 /**
  * reviewPrompt.ts — App Store / Play Store review request
- *
- * RULES (Apple enforces these; violating = rejection):
- *   1. Max 3 prompts per 365 days (iOS enforces this itself, but we track to avoid wasting quota)
- *   2. Never ask after a negative action (error, failed purchase, frustration)
- *   3. Only ask when the user has genuinely gotten value
- *   4. Never ask on first launch or during onboarding
- *   5. Never show a custom "rate us" dialog first — call the native prompt directly
- *   6. System may suppress the prompt (iOS decides) — that's fine, it's expected
- *
- * OUR TRIGGER CONDITIONS (all must be true):
- *   A. User has entered income AND expenses (they've actually used the app)
- *   B. At least 3 app opens have happened
- *   C. Readiness score > 0 (they have real data)
- *   D. Not within 30 days of last prompt
- *   E. We haven't prompted more than 3 times this year
- *
- * GOOD MOMENTS to call maybeRequestReview():
- *   - After marking a game plan step as "done"
- *   - After completing onboarding with real data
- *   - After a purchase succeeds (they're happy)
- *   - After viewing their affordability number for the 3rd+ time
- *
- * BAD MOMENTS (do NOT call):
- *   - After a failed purchase
- *   - During onboarding
- *   - On first open
- *   - After displaying an error
- *
- * SETUP (when you're ready):
- *   npx expo install expo-store-review
- *   Then uncomment the import and requestReview() call below.
- *
- * Until expo-store-review is installed, this is a safe no-op stub.
  */
 
-// import * as StoreReview from 'expo-store-review';
+import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY_LAST_PROMPTED  = 'review:lastPromptedMs';
@@ -44,22 +11,23 @@ const KEY_YEAR_TRACKED   = 'review:yearTracked';
 const KEY_APP_OPENS      = 'review:appOpens';
 
 const MS_PER_DAY   = 86_400_000;
-const MIN_DAYS_GAP = 30;       // minimum days between prompts
-const MAX_PER_YEAR = 3;        // Apple's hard limit
-const MIN_OPENS    = 3;        // minimum app opens before we ever ask
+const MIN_DAYS_GAP = 30;       
+const MAX_PER_YEAR = 3;        
+const MIN_OPENS    = 3;        
 
 export async function incrementAppOpens(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(KEY_APP_OPENS);
     const count = raw ? parseInt(raw, 10) : 0;
     await AsyncStorage.setItem(KEY_APP_OPENS, String(count + 1));
-  } catch {}
+  } catch (err) {
+    if (__DEV__) console.warn('[ReviewPrompt] Failed to increment opens:', err);
+  }
 }
 
 /**
- * Call this at a "happy moment" — see list above.
+ * Call this at a "happy moment".
  * Silently does nothing if conditions aren't met.
- * Safe to call frequently; internally rate-limited.
  */
 export async function maybeRequestReview(opts: {
   hasIncome: boolean;
@@ -83,19 +51,21 @@ export async function maybeRequestReview(opts: {
     // ── C. Reset yearly counter if new year ──────────────────────────────────
     const trackedYear = await AsyncStorage.getItem(KEY_YEAR_TRACKED);
     let promptCount = 0;
+    
     if (trackedYear === String(currentYear)) {
       const countRaw = await AsyncStorage.getItem(KEY_PROMPT_COUNT);
       promptCount = countRaw ? parseInt(countRaw, 10) : 0;
     } else {
-      // new year — reset
+      // It's a new year — reset the local tracking
       await AsyncStorage.setItem(KEY_YEAR_TRACKED, String(currentYear));
       await AsyncStorage.setItem(KEY_PROMPT_COUNT, '0');
+      promptCount = 0;
     }
 
-    // ── D. Max prompts per year ──────────────────────────────────────────────
+    // ── D. Max prompts per year (Apple/Google hard limit is 3) ───────────────
     if (promptCount >= MAX_PER_YEAR) return;
 
-    // ── E. Min days gap ──────────────────────────────────────────────────────
+    // ── E. Min days gap (don't annoy the user) ───────────────────────────────
     const lastRaw = await AsyncStorage.getItem(KEY_LAST_PROMPTED);
     if (lastRaw) {
       const lastMs = parseInt(lastRaw, 10);
@@ -103,22 +73,23 @@ export async function maybeRequestReview(opts: {
       if (daysSince < MIN_DAYS_GAP) return;
     }
 
-    // ── All conditions met — fire the native review prompt ───────────────────
-    await AsyncStorage.setItem(KEY_LAST_PROMPTED, String(now));
-    await AsyncStorage.setItem(KEY_PROMPT_COUNT, String(promptCount + 1));
-
-    // UNCOMMENT WHEN expo-store-review IS INSTALLED:
-    // const isAvailable = await StoreReview.isAvailableAsync();
-    // if (isAvailable) {
-    //   await StoreReview.requestReview();
-    // }
-
-    // stub: does nothing until SDK is installed
-    if (__DEV__) {
-      console.log('[ReviewPrompt] Would have shown review prompt');
+    // ── All conditions met — trigger the request ─────────────────────────────
+    
+    // 1. Check if the store review is available on this device
+    const isAvailable = await StoreReview.isAvailableAsync();
+    
+    if (isAvailable) {
+      // 2. Request the review
+      await StoreReview.requestReview();
+      
+      // 3. Log the prompt so we don't ask again too soon
+      await AsyncStorage.setItem(KEY_LAST_PROMPTED, String(now));
+      await AsyncStorage.setItem(KEY_PROMPT_COUNT, String(promptCount + 1));
+      
+      if (__DEV__) console.log('[ReviewPrompt] Native review prompt requested');
     }
+
   } catch (err) {
-    // never let review logic crash the app
-    if (__DEV__) console.warn('[ReviewPrompt] error:', err);
+    if (__DEV__) console.warn('[ReviewPrompt] Error in review logic:', err);
   }
 }
