@@ -2,7 +2,7 @@
   "expo": {
     "name": "HonestHouse",
     "slug": "honest-house",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -34,6 +34,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ae06492b-03ba-4da7-afa5-f25a485758f2"
+      }
+    }
   }
 }

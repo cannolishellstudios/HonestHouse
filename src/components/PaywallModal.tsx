@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, ActivityIndicator,
+  Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, ActivityIndicator, Platform
 } from 'react-native';
 import { Star, BookOpen, Shield, BarChart2, DollarSign, Calculator } from 'lucide-react-native';
 import { colors } from '../theme/colors';
@@ -149,10 +149,10 @@ export function PaywallModal({ visible, onClose }: Props) {
                 }
               </TouchableOpacity>
 
-              <Text style={{ color: colors.textMed, fontSize: 11, marginBottom: 10, textAlign: 'center' }}>
+              <Text style={{ textAlign: 'center', color: colors.textMed, fontSize: 11, marginBottom: 10 }}>
                 {selected === 'lifetime'
                   ? 'one-time payment · yours forever · no recurring charges'
-                  : 'cancel anytime · managed through the App Store'}
+                  : `cancel anytime · managed through the ${Platform.OS === 'ios' ? 'App Store' : 'Google Play Store'}`}
               </Text>
 
               <TouchableOpacity

@@ -93,26 +93,36 @@ export const useAppStore = create<S>()(
       completeOnboarding: () => set({ hasOnboarded: true }),
       setPro: (v) => set({ isPro: v }),
 
+      // REAL REVENUECAT CALL
       triggerPurchase: async (planId) => {
         set({ isPurchasing: true });
         try {
           const result = await purchasePro(planId);
-          if (result.success) set({ isPro: true });
-          return result.success;
-        } catch {
+          if (result && result.success) {
+            set({ isPro: true });
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.log('Purchase error:', error);
           return false;
         } finally {
           set({ isPurchasing: false });
         }
       },
 
+      // REAL REVENUECAT RESTORE
       triggerRestore: async () => {
         set({ isRestoring: true });
         try {
           const result = await restorePurchases();
-          if (result.success) set({ isPro: true });
-          return result.success;
-        } catch {
+          if (result && result.success) {
+            set({ isPro: true });
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.log('Restore error:', error);
           return false;
         } finally {
           set({ isRestoring: false });

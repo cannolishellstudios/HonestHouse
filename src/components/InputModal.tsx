@@ -38,7 +38,10 @@ export function InputModal({ visible, label, value, prefix = '$', onSave, onClos
       onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+            style={{ width: '100%' }}
+          >
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={{
                 backgroundColor: '#fff',
