@@ -11,10 +11,13 @@ const KEY_YEAR_TRACKED   = 'review:yearTracked';
 const KEY_APP_OPENS      = 'review:appOpens';
 
 const MS_PER_DAY   = 86_400_000;
-const MIN_DAYS_GAP = 30;       
-const MAX_PER_YEAR = 3;        
-const MIN_OPENS    = 3;        
+const MIN_DAYS_GAP = 30;       // minimum days between prompts
+const MAX_PER_YEAR = 3;        // Apple's hard limit
+const MIN_OPENS    = 3;        // minimum app opens before we ever ask
 
+/**
+ * Tracks the number of times the app has been launched.
+ */
 export async function incrementAppOpens(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(KEY_APP_OPENS);
@@ -56,16 +59,16 @@ export async function maybeRequestReview(opts: {
       const countRaw = await AsyncStorage.getItem(KEY_PROMPT_COUNT);
       promptCount = countRaw ? parseInt(countRaw, 10) : 0;
     } else {
-      // It's a new year — reset the local tracking
+      // New year — reset tracking
       await AsyncStorage.setItem(KEY_YEAR_TRACKED, String(currentYear));
       await AsyncStorage.setItem(KEY_PROMPT_COUNT, '0');
       promptCount = 0;
     }
 
-    // ── D. Max prompts per year (Apple/Google hard limit is 3) ───────────────
+    // ── D. Max prompts per year (Hard limit is 3) ────────────────────────────
     if (promptCount >= MAX_PER_YEAR) return;
 
-    // ── E. Min days gap (don't annoy the user) ───────────────────────────────
+    // ── E. Min days gap ──────────────────────────────────────────────────────
     const lastRaw = await AsyncStorage.getItem(KEY_LAST_PROMPTED);
     if (lastRaw) {
       const lastMs = parseInt(lastRaw, 10);
@@ -75,14 +78,14 @@ export async function maybeRequestReview(opts: {
 
     // ── All conditions met — trigger the request ─────────────────────────────
     
-    // 1. Check if the store review is available on this device
+    // Check if the store review is available on this platform/device
     const isAvailable = await StoreReview.isAvailableAsync();
     
     if (isAvailable) {
-      // 2. Request the review
+      // Fire the native OS prompt
       await StoreReview.requestReview();
       
-      // 3. Log the prompt so we don't ask again too soon
+      // Log the success so we don't over-prompt
       await AsyncStorage.setItem(KEY_LAST_PROMPTED, String(now));
       await AsyncStorage.setItem(KEY_PROMPT_COUNT, String(promptCount + 1));
       
@@ -90,6 +93,7 @@ export async function maybeRequestReview(opts: {
     }
 
   } catch (err) {
+    // Never let review logic crash the main app flow
     if (__DEV__) console.warn('[ReviewPrompt] Error in review logic:', err);
   }
 }

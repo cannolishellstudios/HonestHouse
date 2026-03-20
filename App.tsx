@@ -8,6 +8,7 @@ import TabNavigator from './src/navigation/TabNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { useAppStore } from './src/store/store';
 import { configureRevenueCat } from './src/services/revenueCat';
+import { incrementAppOpens } from './src/services/reviewPrompt';
 
 export default function App() {
   const hasOnboarded = useAppStore(s => s.hasOnboarded);
@@ -15,9 +16,12 @@ export default function App() {
   const syncProStatus = useAppStore(s => s.syncProStatus);
 
   useEffect(() => {
-    // 1. Fire up the RevenueCat SDK
+    // 1. Track this app launch for review prompt logic
+    incrementAppOpens();
+
+    // 2. Fire up the RevenueCat SDK
     configureRevenueCat().then(() => {
-      // 2. Check if the user's sub lapsed while offline
+      // 3. Check if the user's sub lapsed while offline
       syncProStatus();
     });
   }, []);
