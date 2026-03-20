@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { purchasePro, restorePurchases, PlanId } from '../services/revenueCat';
+import { purchasePro, restorePurchases, checkProStatus, PlanId } from '../services/revenueCat';
 import { maybeRequestReview } from '../services/reviewPrompt';
 
 export type { PlanId };
@@ -32,17 +32,14 @@ const pv = (v: string | number): number => {
 };
 
 interface S {
-  // ── persisted fields ───────────────────────────────────────────────────────
   take: number; dp: number; rate: number; term: number; ptax: number;
   monthlyIns: number; hoa: number; goal: number;
   expenses: ListItem[]; debts: ListItem[];
   done: Record<string, boolean>;
   hasOnboarded: boolean;
   isPro: boolean;
-  // ── transient (not persisted) ──────────────────────────────────────────────
   isPurchasing: boolean;
   isRestoring: boolean;
-  // ── actions ────────────────────────────────────────────────────────────────
   setField: (k: string, v: string | number) => void;
   setExpense: (id: string, v: string | number) => void;
   setDebt: (id: string, v: string | number) => void;
@@ -67,13 +64,11 @@ export interface Calcs {
 export const useAppStore = create<S>()(
   persist(
     (set, get) => ({
-      // ── default state ───────────────────────────────────────────────────────
       take: 0, dp: 0, rate: 6.5, term: 30, ptax: 1.2, monthlyIns: 100, hoa: 0, goal: 0,
       expenses: DEFAULT_EXPENSES, debts: DEFAULT_DEBTS,
       done: {}, hasOnboarded: false, isPro: false,
       isPurchasing: false, isRestoring: false,
 
-      // ── actions ─────────────────────────────────────────────────────────────
       setField: (k, v) => set({ [k]: pv(v) }),
       setExpense: (id, v) => {
         const p = pv(v);
@@ -83,19 +78,18 @@ export const useAppStore = create<S>()(
         const p = pv(v);
         set(s => ({ debts: s.debts.map(d => d.id === id ? { ...d, val: p } : d) }));
       },
-  toggleDone: (id) => {
-    const wasDone = get().done[id];
-    set(s => ({ done: { ...s.done, [id]: !s.done[id] } }));
-    if (!wasDone) {
-      // user just marked a step done — good moment to ask for a review
-      const st = get();
-      const hasIncome   = st.take > 0;
-      const hasExpenses = st.totalExpenses() > 0;
-      const { rd }      = st.getCalcs();
-      maybeRequestReview({ hasIncome, hasExpenses, readinessScore: rd });
-    }
-  },
-  completeOnboarding: () => set({ hasOnboarded: true }),
+      toggleDone: (id) => {
+        const wasDone = get().done[id];
+        set(s => ({ done: { ...s.done, [id]: !s.done[id] } }));
+        if (!wasDone) {
+          const st = get();
+          const hasIncome   = st.take > 0;
+          const hasExpenses = st.totalExpenses() > 0;
+          const { rd }      = st.getCalcs();
+          maybeRequestReview({ hasIncome, hasExpenses, readinessScore: rd });
+        }
+      },
+      completeOnboarding: () => set({ hasOnboarded: true }),
       setPro: (v) => set({ isPro: v }),
 
       triggerPurchase: async (planId) => {
@@ -125,11 +119,8 @@ export const useAppStore = create<S>()(
       },
 
       syncProStatus: async () => {
-        // No-op until real RevenueCat SDK is wired up.
-        // Once you install react-native-purchases, replace with:
-        //   const active = await checkProStatus();
-        //   set({ isPro: active });
-        return;
+        const active = await checkProStatus();
+        set({ isPro: active });
       },
 
       totalExpenses: () => get().expenses.reduce((s, e) => s + e.val, 0),
@@ -194,9 +185,8 @@ export const useAppStore = create<S>()(
       },
     }),
     {
-      name: 'honesthouse-store',          // AsyncStorage key
+      name: 'honesthouse-store',
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist what matters — skip transient UI state
       partialize: (s) => ({
         take:       s.take,
         dp:         s.dp,
@@ -209,8 +199,8 @@ export const useAppStore = create<S>()(
         expenses:   s.expenses,
         debts:      s.debts,
         done:       s.done,
-        hasOnboarded: s.hasOnboarded,  // ← this is the key one
-        isPro:      s.isPro,           // ← and this
+        hasOnboarded: s.hasOnboarded,
+        isPro:      s.isPro,
       }),
     }
   )

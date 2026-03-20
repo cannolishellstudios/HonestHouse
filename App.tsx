@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -6,10 +7,20 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabNavigator from './src/navigation/TabNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { useAppStore } from './src/store/store';
+import { configureRevenueCat } from './src/services/revenueCat';
 
 export default function App() {
   const hasOnboarded = useAppStore(s => s.hasOnboarded);
   const completeOnboarding = useAppStore(s => s.completeOnboarding);
+  const syncProStatus = useAppStore(s => s.syncProStatus);
+
+  useEffect(() => {
+    // 1. Fire up the RevenueCat SDK
+    configureRevenueCat().then(() => {
+      // 2. Check if the user's sub lapsed while offline
+      syncProStatus();
+    });
+  }, []);
 
   if (!hasOnboarded) {
     return (
